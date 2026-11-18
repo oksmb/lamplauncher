@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LampLauncher</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="power-standby view-globe">
+  <canvas id="stars" aria-hidden="true"></canvas>
+
+  <!-- the home screen: the Earth, a dot for every cam, a preview of the one picked -->
+  <main id="home" aria-label="Cams">
+    <canvas id="globe" aria-hidden="true"></canvas>
+    <div id="markers"></div>
+    <div id="clock"></div>
+    <p id="admin-url"></p>
+    <aside id="preview" hidden>
+      <div id="preview-media">
+        <div id="preview-still"></div>
+        <div id="preview-live"></div>
+        <div id="preview-glyph"></div>
+        <span id="preview-star" hidden>&#9733; Default</span>
+      </div>
+      <div id="preview-text">
+        <h2 id="preview-name"></h2>
+        <p id="preview-where"></p>
+        <p id="preview-sun"></p>
+      </div>
+    </aside>
+    <footer id="hints">
+      <span><kbd><svg class="tri" viewBox="0 0 10 10" aria-hidden="true"><path d="M7.5 1.5v7L1.5 5z"/></svg><svg class="tri" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5v7L8.5 5z"/></svg></kbd> choose</span>
+      <span><kbd>OK</kbd> watch</span>
+      <span><kbd>hold OK</kbd> <span id="hint-default">make default</span></span>
+      <span id="hint-up"><kbd><svg class="tri" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 7.5h7L5 1.5z"/></svg></kbd> <span id="hint-up-text">WindowSwap</span></span>
+      <span id="hint-down"><kbd><svg class="tri" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 2.5h7L5 8.5z"/></svg></kbd> <span id="hint-down-text">apps</span></span>
+    </footer>
+    <p id="credit">Image NASA</p>
+  </main>
+
+  <!-- ▼ from the globe: the box's other apps -->
+  <section id="apps-panel" aria-label="Apps">
+    <h2>Apps</h2>
+    <div id="apps" role="listbox"></div>
+  </section>
+
+  <!-- under WindowSwap while it loads -->
+  <div id="site-cover"><p id="site-text"></p></div>
+  <div id="toast" hidden></div>
+  <!-- waiting for the internet before opening a cam (e.g. just after switching on) -->
+  <div id="status" hidden><span class="spinner"></span><span><span id="status-text"></span><small id="status-more"></small></span></div>
+  <div id="standby"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

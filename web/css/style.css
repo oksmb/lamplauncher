@@ -1,0 +1,202 @@
+/* LampLauncher on a TV across the room: everything scales with the screen. */
+:root {
+  --space: #03050b;
+  --text: #f4f1ea;
+  --muted: #a9b0bf;
+  --accent: #ffbf5e;
+  --star: #ffd25e;
+  --night: #b9c6ff;
+  --glass: rgba(9, 13, 24, 0.74);
+  --line: rgba(255, 255, 255, 0.14);
+  --radius: 1.4vh;
+  --globe: min(101.6vh, 63.5vw); /* the globe's canvas: the globe is 85% of it, the rest glow */
+  font-size: clamp(13px, 1.4vw, 42px);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--space);
+  color: var(--text);
+  font-family: "Google Sans", "Noto Sans", "DejaVu Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: none;
+  user-select: none;
+}
+[hidden] { display: none !important; }
+kbd {
+  font: inherit;
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.1em 0.45em;
+  border-radius: 0.35em;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #161b27;
+  color: var(--text);
+}
+svg { display: block; width: 100%; height: 100%; }
+kbd .tri { display: inline-block; width: 0.8em; height: 0.8em; fill: currentColor; vertical-align: -0.05em; }
+kbd .tri + .tri { margin-left: 0.25em; }
+
+/* ------------------------------------------------------------- the globe */
+#stars { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+#home { position: fixed; inset: 0; transition: opacity 0.3s ease, filter 0.3s ease; }
+#globe {
+  position: absolute;
+  width: var(--globe); height: var(--globe);
+  left: calc(50vw - var(--globe) / 2); top: calc(50vh - var(--globe) / 2);
+}
+#markers { position: absolute; inset: 0; pointer-events: none; }
+.marker { position: absolute; left: 0; top: 0; will-change: transform; --dot: 1.45vh; }
+.marker.behind { visibility: hidden; }
+.marker .dot {
+  position: absolute; width: var(--dot); height: var(--dot);
+  left: calc(var(--dot) / -2); top: calc(var(--dot) / -2);
+  border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 0.22vh rgba(5, 10, 25, 0.55), 0 0 1.4vh rgba(255, 255, 255, 0.55);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.marker.night .dot { background: #dfe5ff; box-shadow: 0 0 0 0.22vh rgba(5, 10, 25, 0.6), 0 0 1vh rgba(185, 198, 255, 0.45); }
+/* the default cam: a star instead of a dot */
+.marker.favorite.place { --dot: 2.9vh; }
+.marker.favorite.place .dot { background: none; box-shadow: none; color: var(--star); filter: drop-shadow(0 0 0.25vh rgba(0, 0, 0, 0.9)) drop-shadow(0 0 1vh rgba(255, 200, 80, 0.7)); }
+.marker.favorite.place .dot svg { fill: currentColor; stroke: rgba(60, 35, 0, 0.6); stroke-width: 0.8; }
+.marker.selected .dot { transform: scale(1.45); }
+.marker.favorite.place.selected .dot { transform: scale(1.3); }
+.marker .ring {
+  position: absolute; width: 4.6vh; height: 4.6vh; left: -2.3vh; top: -2.3vh;
+  border-radius: 50%; border: 0.35vh solid var(--accent);
+  box-shadow: 0 0 1.6vh rgba(255, 191, 94, 0.55), inset 0 0 1vh rgba(255, 191, 94, 0.3);
+  opacity: 0; transform: scale(0.6);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.marker.selected .ring { opacity: 1; transform: scale(1); animation: breathe 2.4s ease-in-out infinite 0.3s; }
+@keyframes breathe { 50% { transform: scale(1.12); } }
+/* cams without a place on Earth (WindowSwap) orbit beside it */
+.marker.satellite { --dot: 4.4vh; }
+.marker.satellite .dot {
+  padding: 0.95vh; color: #fff; background: radial-gradient(circle at 35% 30%, #4b6fa8, #1b2b4d);
+  box-shadow: 0 0 0 0.25vh rgba(255, 255, 255, 0.35), 0 0 2vh rgba(120, 170, 255, 0.45);
+}
+.marker.satellite .dot svg { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.marker.satellite .ring { width: 6.6vh; height: 6.6vh; left: -3.3vh; top: -3.3vh; }
+.marker.satellite.selected .dot { transform: scale(1.12); }
+.marker .badge { position: absolute; width: 2.2vh; height: 2.2vh; left: 0.9vh; top: -3.1vh; color: var(--star); }
+.marker .badge svg { fill: currentColor; }
+
+#clock {
+  position: absolute; left: 4vw; top: 5vh;
+  font-size: 2.1rem; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+#admin-url { position: absolute; right: 4vw; top: 5.2vh; margin: 0; color: var(--muted); font-size: 0.72rem; opacity: 0.75; }
+#credit { position: absolute; right: 4vw; bottom: 1.8vh; margin: 0; font-size: 0.62rem; color: var(--muted); opacity: 0.6; }
+
+/* the picked cam */
+#preview {
+  position: absolute; right: 3vw; bottom: 5vh; width: 24vw;
+  padding: 1vh; border-radius: calc(var(--radius) + 0.6vh);
+  background: var(--glass); border: 1px solid var(--line);
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.55);
+}
+#preview-media {
+  position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden;
+  background: linear-gradient(160deg, #24344f, #101827);
+  outline: 0.3vh solid rgba(255, 255, 255, 0.92); outline-offset: -0.3vh;
+}
+#preview-media.windowswap { background: linear-gradient(160deg, #7fb3d5 0%, #f6c27a 55%, #f08a5d 100%); }
+#preview-media.web { background: linear-gradient(160deg, #3b5d50, #1d2a3a); }
+#preview-still { position: absolute; inset: 0; background: center / 100% auto no-repeat; } /* hides the still's black bars */
+#preview-live { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s ease; overflow: hidden; }
+#preview-live.on { opacity: 1; }
+#preview-live iframe { position: absolute; left: 0; top: 0; width: 640px; height: 360px; border: 0; transform-origin: 0 0; transform: scale(var(--k, 0.5)); pointer-events: none; }
+#preview-glyph {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; pointer-events: none;
+}
+#preview-glyph svg { width: 26%; height: auto; fill: none; stroke: currentColor; stroke-width: 1.5; filter: drop-shadow(0 0.4vh 1vh rgba(0, 0, 0, 0.35)); }
+#preview-glyph .note { font-size: 0.8rem; color: var(--muted); background: rgba(0, 0, 0, 0.55); padding: 0.3em 0.8em; border-radius: 99em; }
+#preview-star {
+  position: absolute; left: 1vh; top: 1vh; font-size: 0.72rem; font-weight: 800;
+  padding: 0.25em 0.7em; border-radius: 99em; background: rgba(0, 0, 0, 0.65); color: var(--star);
+}
+#preview-text { padding: 1.3vh 0.6vh 0.5vh; }
+#preview-name {
+  margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#preview-where { margin: 0.25em 0 0; color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#preview-sun { margin: 0.35em 0 0; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
+#preview-sun.night { color: var(--night); }
+#preview-sun:empty { display: none; }
+
+#hints {
+  position: absolute; left: 4vw; bottom: 5vh;
+  display: flex; flex-direction: column; gap: 1.1vh; color: var(--muted); font-size: 0.85rem;
+}
+
+/* ------------------------------------------------------------- the apps */
+#apps-panel {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 72vh;
+  padding: 5vh 5vw 0;
+  background: linear-gradient(rgba(6, 9, 18, 0.88), rgba(6, 9, 18, 0.97) 30%);
+  border-top: 1px solid var(--line);
+  transform: translateY(102%); transition: transform 0.32s ease;
+  display: flex; flex-direction: column;
+}
+body.view-apps #apps-panel { transform: none; }
+body.view-apps #home { filter: brightness(0.55); }
+#apps-panel h2 { margin: 0 0 2.4vh; font-size: 1.3rem; font-weight: 600; }
+#apps {
+  flex: 1; min-height: 0; overflow: hidden;
+  display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  gap: 3vh 1.6vw; align-content: start; padding: 1vh 0.8vw 4vh;
+}
+.app {
+  aspect-ratio: 16 / 9; border-radius: var(--radius);
+  background: #1d2230 center / cover no-repeat;
+  display: flex; align-items: flex-end;
+  outline: 0.35vh solid transparent; outline-offset: 0.45vh;
+  transition: transform 0.18s ease, outline-color 0.18s ease;
+  position: relative; overflow: hidden; scroll-margin: 2vh;
+}
+.app.focus { transform: scale(1.06); outline-color: var(--accent); z-index: 1; }
+.app .label {
+  width: 100%; padding: 0.45em 0.7em; font-size: 0.75rem; font-weight: 600;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app.has-banner .label { opacity: 0; }
+.app.focus .label { opacity: 1; }
+
+/* ------------------------------------------------------------- overlays */
+#site-cover { position: fixed; inset: 0; background: #000; display: none; align-items: center; justify-content: center; }
+body.view-site #site-cover { display: flex; }
+#site-text { color: var(--muted); }
+#toast {
+  position: fixed; top: 5vh; left: 50%; transform: translateX(-50%);
+  padding: 1.1vh 1.8vw; border-radius: 99em; background: rgba(8, 11, 20, 0.86); border: 1px solid var(--line);
+  font-weight: 600; animation: fade-in 0.2s ease; white-space: nowrap; z-index: 10;
+}
+@keyframes fade-in { from { opacity: 0; } }
+#status {
+  position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 1.2vw; max-width: 46vw;
+  padding: 1.2vh 1.8vw; border-radius: 2.4vh; background: rgba(8, 11, 20, 0.9); border: 1px solid var(--line);
+  font-weight: 600; animation: fade-in 0.3s ease;
+}
+#status small { display: block; margin-top: 0.3em; font-weight: 400; font-size: 0.8rem; color: var(--muted); }
+#status small:empty { display: none; }
+#status .spinner {
+  flex: none; width: 2.6vh; height: 2.6vh; border-radius: 50%;
+  border: 0.35vh solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* desktop development only: stands in for the Android site view */
+#dev-site { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #000; z-index: 5; }
+
+/* standby: black screen */
+#standby { position: fixed; inset: 0; background: #000; display: none; z-index: 20; }
+body.power-standby #standby { display: block; }

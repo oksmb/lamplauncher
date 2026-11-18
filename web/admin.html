@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LampLauncher Cams</title>
+<style>
+  :root { color-scheme: light dark; --accent: #d97a00; --line: color-mix(in srgb, currentColor 18%, transparent); }
+  [hidden] { display: none !important; }
+  body { font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0 auto; max-width: 760px; padding: 16px; background: Canvas; color: CanvasText; }
+  h1 { font-size: 1.5rem; margin: 0.2em 0 0.1em; }
+  h2 { font-size: 1.1rem; margin: 1.6em 0 0.6em; }
+  p.lead { margin: 0 0 1em; opacity: 0.75; }
+  .remote { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  button { font: inherit; padding: 0.45em 0.7em; border-radius: 8px; border: 1px solid var(--line); background: color-mix(in srgb, CanvasText 6%, Canvas); color: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:disabled { opacity: 0.4; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li.cam { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  li.cam .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  li.cam .name { font-weight: 600; }
+  li.cam .src { font-size: 0.85em; opacity: 0.7; word-break: break-all; }
+  li.cam .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .tag { font-size: 0.8em; padding: 0.1em 0.5em; border-radius: 99px; border: 1px solid var(--line); }
+  .tag.off { color: #c0392b; } .tag.ok { color: #2e8b57; }
+  form { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  label { display: grid; gap: 3px; font-size: 0.9em; }
+  input, select { font: inherit; padding: 0.45em 0.55em; border-radius: 8px; border: 1px solid var(--line); background: Canvas; color: inherit; width: 100%; box-sizing: border-box; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .help { font-size: 0.82em; opacity: 0.7; }
+  #check-result { font-size: 0.9em; min-height: 1.3em; }
+  .err { color: #c0392b; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .notice { border-color: var(--accent); }
+  .notice code, pre { font-size: 0.85em; }
+  pre { white-space: pre-wrap; word-break: break-all; background: color-mix(in srgb, CanvasText 6%, Canvas); padding: 8px; border-radius: 8px; margin: 6px 0; }
+  .prefs { display: grid; gap: 10px; }
+  .check { display: flex; gap: 8px; align-items: center; }
+  .check input { width: auto; }
+  #saved { font-size: 0.9em; opacity: 0.75; margin-left: 8px; }
+</style>
+</head>
+<body>
+  <h1>LampLauncher cams</h1>
+  <p class="lead">Add and edit the cams on the TV's globe. The default cam (★) opens in the YouTube app when the TV turns on; set it here, or on the TV by holding OK on a cam.</p>
+
+  <div id="setup" class="card notice" hidden>
+    <strong>One more setup step:</strong> LampLauncher isn't the box's home app yet, so pressing
+    power in the morning may bring back Google TV's home screen instead of your default cam.
+    From a computer with <code>adb</code> connected to the box, run:
+    <pre id="setup-cmds"></pre>
+    See <a href="https://github.com/oksmb/lamplauncher/blob/HEAD/Claude-README.md#4-make-lamplauncher-the-home-screen">Claude-README.md</a> for details and how to undo it.
+  </div>
+
+  <h2>Remote</h2>
+  <div class="remote" id="remote"></div>
+
+  <h2>Cams</h2>
+  <ul id="cams"></ul>
+
+  <h2>Globe</h2>
+  <form id="prefs" class="prefs">
+    <label>Preview of the highlighted cam
+      <select name="preview">
+        <option value="video">Live picture (muted)</option>
+        <option value="image">Still picture only (less data, for slow connections)</option>
+      </select>
+    </label>
+    <div><button class="primary" type="submit">Save</button><span id="saved"></span><span id="prefs-error" class="err"></span></div>
+  </form>
+
+  <h2>Remote buttons</h2>
+  <div class="card">
+    <p class="help" style="margin-top:0">Arrows, OK and Back work out of the box; hold OK on a cam to make it the default.
+      To use another button (for example the blue or star button), press it on the remote, then assign it here.</p>
+    <div id="last-key">No unrecognised button pressed yet.</div>
+    <div id="assign" class="row" hidden>
+      <select id="assign-action"></select>
+      <button type="button" id="assign-save">Assign</button>
+    </div>
+    <ul id="keys"></ul>
+  </div>
+
+  <h2 id="form-title">Add a cam</h2>
+  <form id="form">
+    <label>Type
+      <select name="type">
+        <option value="youtube">YouTube live stream</option>
+        <option value="windowswap">WindowSwap (random window)</option>
+        <option value="web">Other web page</option>
+      </select>
+    </label>
+    <label>Name <input name="name" required placeholder="Sapsucker Woods feeders"></label>
+    <label class="for-source">YouTube link, video ID, or channel
+      <input name="source" placeholder="https://www.youtube.com/watch?v=… or @CornellBirdCams">
+      <span class="help">A channel (@handle) keeps working when a 24/7 stream restarts with a new video ID.</span>
+    </label>
+    <label class="for-match">Title must contain (optional, for channels with several streams)
+      <input name="match" placeholder="FeederWatch">
+      <span class="help">A regular expression, matched case-insensitively.</span>
+    </label>
+    <div><button type="button" id="check">Check link</button> <span id="check-result"></span></div>
+    <label>Location (shown with the preview) <input name="location" placeholder="Ithaca, New York"></label>
+    <label>Time zone (for the cam's local time)
+      <input name="tz" list="zones" placeholder="America/New_York">
+      <datalist id="zones"></datalist>
+    </label>
+    <div class="row">
+      <label>Latitude <input name="lat" inputmode="decimal" placeholder="42.48"></label>
+      <label>Longitude <input name="lon" inputmode="decimal" placeholder="-76.45"></label>
+    </div>
+    <span class="help">Latitude and longitude put the cam on the globe and tell day (☀) from night (🌙) there. Without them it orbits beside the globe, like WindowSwap. Tip: right-click a spot in Google Maps to copy its coordinates.</span>
+    <div>
+      <button class="primary" type="submit" id="save">Add cam</button>
+      <button type="button" id="cancel" hidden>Cancel</button>
+      <span id="form-error" class="err"></span>
+    </div>
+  </form>
+  <script src="js/admin.js"></script>
+</body>
+</html>

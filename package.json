@@ -1,0 +1,15 @@
+{
+  "name": "lamplauncher",
+  "version": "3.0.0",
+  "private": true,
+  "description": "A morning virtual window for a Google TV box: a globe of live nature cams, and one press of power opens your favourite in the YouTube app",
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/devserver.mjs",
+    "test": "node --test tests/core/*.test.mjs",
+    "test:ui": "node tests/ui/ui_test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
